@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-resty/resty/v2"
-	"github.com/peterbourgon/diskv/v3"
 	"io"
 	"net/http"
 	"os"
@@ -19,8 +18,6 @@ import (
 )
 
 const reqPrefix = "https://pan.huang1111.cn/api/v3"
-
-var dkv *diskv.Diskv
 
 // 刷新session
 func config() error {
@@ -89,10 +86,13 @@ func finishUpload(sessionId string) error {
 		return nil
 	})
 	if err == nil && result.Code == 0 {
-		key := dkv.ReadString(sessionId)
-		if key != "" {
-			_ = dkv.Erase(key)
-			_ = dkv.Erase(sessionId)
+		var key string
+		err = getCache(sessionId, &key)
+		if err == nil {
+			err = delCache(key)
+			if err == nil {
+				err = delCache(sessionId)
+			}
 		}
 	}
 	return err
@@ -100,13 +100,25 @@ func finishUpload(sessionId string) error {
 
 type ChunkConsumer func(chunk *ChunkData) error
 
-func chunkSplit(file *os.File, chunkSize int, consumer ChunkConsumer) error {
+func chunkSplit(file *os.File, uploadedChunkNum, chunkSize int, chunkKey string, consumer ChunkConsumer) error {
 	var buf []byte
 	var chunk int
 	stat, err := file.Stat()
 	totalSize := int(stat.Size())
 	chunkNum := (totalSize / chunkSize) + 1
 	fmt.Printf("split chunk total size: %d, num:%d \n", totalSize, chunkNum)
+	if uploadedChunkNum >= 0 {
+		chunk = uploadedChunkNum + 1
+		if chunk > chunkNum {
+			fmt.Println("file chunk is uploaded before")
+			return nil
+		}
+		// 将文件指针移动到指定的分片位置
+		ret, _ := file.Seek(int64(chunk*chunkSize), 0)
+		if ret != 0 {
+			fmt.Println("file seek to " + strconv.FormatInt(ret, 10))
+		}
+	}
 	for {
 		var n int
 		buf = make([]byte, chunkSize)
@@ -141,6 +153,8 @@ func chunkSplit(file *os.File, chunkSize int, consumer ChunkConsumer) error {
 			return err
 		}
 		fmt.Printf("success upload chunk: %d , %.2f%% \n", chunk+1, percent)
+		// 设置分片缓存
+		_ = setCache(chunkKey, strconv.Itoa(chunk))
 		chunk++
 	}
 	return nil
@@ -158,27 +172,25 @@ func preUploadCache(fileInfo os.FileInfo, policyId, path string) (*USessionInfo,
 	if err != nil {
 		return nil, err
 	}
-	var resp *USessionInfo
-	reloadFlag := false
-	if dkv.Has(key) {
-		respStr := dkv.ReadString(key)
-		err = json.Unmarshal([]byte(respStr), &resp)
-		if err != nil || resp.Expires < int(time.Now().Unix()) {
-			resp, err = preUpload(reqBody)
-			reloadFlag = true
+	var resp USessionInfo
+	err = getCache(key, &resp)
+	if err != nil || (resp.Expires > 0 && resp.Expires < int(time.Now().Unix())) {
+		if resp.SessionID != "" {
+			_ = delCache(resp.SessionID)
+			_ = delCache(key)
+			_ = delCache("chunk_" + resp.SessionID)
 		}
-	} else {
-		resp, err = preUpload(reqBody)
-		reloadFlag = true
-	}
-	if reloadFlag && err == nil {
-		marshal, err := json.Marshal(resp)
-		if err == nil {
-			err = dkv.WriteString(resp.SessionID, key)
-			err = dkv.Write(key, marshal)
+		upload, preErr := preUpload(reqBody)
+		if preErr == nil {
+			preErr = setCache(key, upload)
+			if preErr == nil {
+				preErr = setCache(upload.SessionID, key)
+				resp = *upload
+			}
 		}
+		err = preErr
 	}
-	return resp, err
+	return &resp, err
 }
 
 func md5Hash(params any) (string, error) {
@@ -198,14 +210,6 @@ func md5Hash(params any) (string, error) {
 	return md5Str, nil
 }
 
-func initDiskv() {
-	// 定义一个简单的转换函数，将所有数据文件放入基础目录。
-	// 使用提供的选项初始化一个新的diskv存储，根目录为从配置读出，缓存大小为10MB。
-	dkv = diskv.New(diskv.Options{
-		BasePath:     flags.CachePath,
-		CacheSizeMax: 10 * 1024 * 1024, // 10MB
-	})
-}
 func exitByError(err error) {
 	if err != nil {
 		fmt.Println(err)
@@ -273,7 +277,8 @@ func StartUpload(file string) {
 }
 
 func uploadFile(path string, directoryResp *DirectoryResp, relPath string) error {
-	fmt.Println("file start upload,", path)
+	startTime := time.Now()
+	fmt.Println("file start upload,", path, startTime.Format("2006-01-02 15:04:05"))
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Println("file upload error,", path, err)
@@ -299,8 +304,12 @@ func uploadFile(path string, directoryResp *DirectoryResp, relPath string) error
 		}
 		return nil
 	}
+	cacheChunkNum := "-1"
+	chunkKey := "chunk_" + uSessionInfo.SessionID
+	_ = getCache(chunkKey, &cacheChunkNum)
+	uploadedChunkNum, _ := strconv.Atoi(cacheChunkNum)
 
-	err = chunkSplit(file, uSessionInfo.ChunkSize, func(chunk *ChunkData) error {
+	err = chunkSplit(file, uploadedChunkNum, uSessionInfo.ChunkSize, chunkKey, func(chunk *ChunkData) error {
 		return uploading(uSessionInfo.UploadURLs[0], chunk)
 	})
 	if err != nil {
@@ -312,6 +321,7 @@ func uploadFile(path string, directoryResp *DirectoryResp, relPath string) error
 		fmt.Println("file finish upload error,", info.Name(), err)
 		return nil
 	}
-	fmt.Println("file success upload,", path)
+	_ = delCache(chunkKey)
+	fmt.Println("file success upload,", path, time.Now().Format("2006-01-02 15:04:05"), time.Since(startTime))
 	return nil
 }

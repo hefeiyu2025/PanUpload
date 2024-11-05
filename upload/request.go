@@ -120,7 +120,7 @@ func (pr *ProgressReader) Read(p []byte) (n int, err error) {
 		fmt.Printf("\ruploading: %.2f%% (%d/%d bytes, %.2f KB/s)", percent, pr.uploaded, pr.totalSize, speed)
 		// 相等即已经处理完毕
 		if pr.uploaded == pr.totalSize {
-			fmt.Println("")
+			fmt.Println()
 		}
 	}
 	return n, err
