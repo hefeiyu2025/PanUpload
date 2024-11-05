@@ -187,7 +187,9 @@ func preUploadCache(fileInfo os.FileInfo, policyId, path string) (*USessionInfo,
 				resp = *upload
 			}
 		}
-		err = preErr
+		if err != nil {
+			err = preErr
+		}
 	}
 	return &resp, err
 }
