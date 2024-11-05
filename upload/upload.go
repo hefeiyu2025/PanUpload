@@ -175,13 +175,12 @@ func preUploadCache(fileInfo os.FileInfo, policyId, path string) (*USessionInfo,
 	var resp USessionInfo
 	err = getCache(key, &resp)
 	if err != nil || (resp.Expires > 0 && resp.Expires < int(time.Now().Unix())) {
-		if resp.SessionID != "" {
-			_ = delCache(resp.SessionID)
-			_ = delCache(key)
-			_ = delCache("chunk_" + resp.SessionID)
-		}
 		upload, preErr := preUpload(reqBody)
 		if preErr == nil {
+			if resp.SessionID != "" {
+				_ = delCache(resp.SessionID)
+				_ = delCache("chunk_" + resp.SessionID)
+			}
 			preErr = setCache(key, upload)
 			if preErr == nil {
 				preErr = setCache(upload.SessionID, key)
