@@ -326,3 +326,8 @@ func uploadFile(path string, directoryResp *DirectoryResp, relPath string) error
 	fmt.Println("file success upload,", path, time.Now().Format("2006-01-02 15:04:05"), time.Since(startTime))
 	return nil
 }
+
+func DeleteAllSession() {
+	initClient()
+	request(resty.MethodDelete, reqPrefix+"/file/upload", nil, nil)
+}
