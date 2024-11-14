@@ -53,6 +53,18 @@ func request(method string, url string, res interface{}, beforeRequest resty.Req
 	return nil
 }
 
+// exists checks if file exists.
+func exists(path string) bool {
+	stat, err := os.Stat(path)
+	if err == nil {
+		return !stat.IsDir()
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	return false
+}
+
 func initCloudreveSession() {
 	session, err := os.Open(flags.SessionPath)
 	if err != nil {

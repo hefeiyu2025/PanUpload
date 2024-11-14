@@ -7,11 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/caiguanhao/opencc/configs/t2s"
 	"github.com/go-resty/resty/v2"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -161,10 +163,24 @@ func chunkSplit(file *os.File, uploadedChunkNum, chunkSize int, chunkKey string,
 }
 
 func preUploadCache(fileInfo os.FileInfo, policyId, path string) (*USessionInfo, error) {
+	newFileName := fileInfo.Name()
+	newRemotePath := path
+	for _, removeStr := range flags.GetRemoveStrs() {
+		newFileName = strings.ReplaceAll(newFileName, removeStr, "")
+		newRemotePath = strings.ReplaceAll(newRemotePath, removeStr, "")
+	}
+	// 使用正则表达式替换字符串
+	re := regexp.MustCompile(flags.RemoveReg)
+	newRemotePath = re.ReplaceAllString(newRemotePath, "")
+
+	newFileName = strings.TrimSpace(newFileName)
+	newFileName = t2s.Dicts.Convert(newFileName)
+	newRemotePath = strings.TrimSpace(newRemotePath)
+	newRemotePath = t2s.Dicts.Convert(newRemotePath)
 	reqBody := &USessionReq{
-		Path:         path,
+		Path:         newRemotePath,
 		Size:         fileInfo.Size(),
-		Name:         fileInfo.Name(),
+		Name:         newFileName,
 		PolicyId:     policyId,
 		LastModified: fileInfo.ModTime().UnixMilli(),
 	}
@@ -218,6 +234,20 @@ func exitByError(err error) {
 	}
 }
 
+func isEmpty(dirPath string) (bool, error) {
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		return false, err
+	}
+	defer dir.Close()
+	//如果目录不为空，Readdirnames 会返回至少一个文件名
+	_, err = dir.Readdirnames(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
+}
+
 func StartUpload(file string) {
 	initClient()
 	initDiskv()
@@ -241,6 +271,10 @@ func StartUpload(file string) {
 			root = file
 		} else {
 			err = uploadFile(file, directoryResp, "")
+			if err == nil && flags.Delete {
+				// 上传成功则移除文件了
+				_ = os.Remove(file)
+			}
 			exitByError(err)
 			os.Exit(2)
 		}
@@ -259,6 +293,11 @@ func StartUpload(file string) {
 			if pathAbs == cachePathAbs {
 				return filepath.SkipDir
 			}
+			for _, ignorePath := range flags.GetIgnorePaths() {
+				if filepath.Base(path) == ignorePath {
+					return filepath.SkipDir
+				}
+			}
 		} else {
 			pathAbs, _ := filepath.Abs(path)
 			if pathAbs == sessionPathAbs {
@@ -268,7 +307,27 @@ func StartUpload(file string) {
 			relPath, _ := filepath.Rel(root, path)
 			relPath = strings.Replace(relPath, "\\", "/", -1)
 			relPath = strings.Replace(relPath, info.Name(), "", 1)
-			return uploadFile(path, directoryResp, relPath)
+			needUpload := false
+			for _, extension := range flags.GetExtensions() {
+				if strings.HasSuffix(info.Name(), extension) {
+					needUpload = true
+				}
+			}
+			if needUpload {
+				err = uploadFile(path, directoryResp, relPath)
+				if err == nil && flags.Delete {
+					fmt.Println("uploaded added", path)
+					// 上传成功则移除文件了
+					_ = os.Remove(path)
+					dir := filepath.Dir(path)
+					if dir != "." {
+						empty, _ := isEmpty(dir)
+						if empty {
+							_ = os.Remove(dir)
+						}
+					}
+				}
+			}
 		}
 		return nil
 	})
@@ -290,20 +349,21 @@ func uploadFile(path string, directoryResp *DirectoryResp, relPath string) error
 	info, err := file.Stat()
 	if err != nil {
 		fmt.Println("file read stat error,", path, err)
-		return nil
+		return err
 	}
 	if info.Size() == 0 {
 		fmt.Println("file size is zero, give up,", path)
-		return nil
+		return err
 	}
 	uSessionInfo, err := preUploadCache(info, directoryResp.Policy.Id, flags.RemotePath+relPath)
 	if err != nil {
 		if errors.As(err, &ObjectExistError{}) {
 			fmt.Println("file is exist,", info.Name())
+			return nil
 		} else {
 			fmt.Println("file upload error,", info.Name(), err)
+			return err
 		}
-		return nil
 	}
 	cacheChunkNum := "-1"
 	chunkKey := "chunk_" + uSessionInfo.SessionID
@@ -315,12 +375,12 @@ func uploadFile(path string, directoryResp *DirectoryResp, relPath string) error
 	})
 	if err != nil {
 		fmt.Println("file upload error,", info.Name(), err)
-		return nil
+		return err
 	}
 	err = finishUpload(uSessionInfo.SessionID)
 	if err != nil {
 		fmt.Println("file finish upload error,", info.Name(), err)
-		return nil
+		return err
 	}
 	_ = delCache(chunkKey)
 	fmt.Println("file success upload,", path, time.Now().Format("2006-01-02 15:04:05"), time.Since(startTime))
