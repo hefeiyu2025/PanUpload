@@ -1,6 +1,9 @@
 package upload
 
-import "time"
+import (
+	"io"
+	"time"
+)
 
 type Resp[T any] struct {
 	Code int    `json:"code"`
@@ -48,12 +51,12 @@ type USessionReq struct {
 }
 
 type ChunkData struct {
-	StartSize int
-	EndSize   int
-	ChunkSize int
-	TotalSize int
-	ChunkNum  int
-	Buf       []byte
+	StartSize   int
+	EndSize     int
+	ChunkSize   int
+	TotalSize   int
+	ChunkNum    int
+	chunkReader io.Reader
 }
 
 // ObjectExistError 自定义错误类型

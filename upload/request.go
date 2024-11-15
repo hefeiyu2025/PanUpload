@@ -2,18 +2,16 @@ package upload
 
 import (
 	"PanUpload/cmd/flags"
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/go-resty/resty/v2"
-	"golang.org/x/time/rate"
+	"github.com/imroc/req/v3"
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
-var client *resty.Client
 var cloudreveSession string
 var sessionLastTime time.Time
 
@@ -21,26 +19,22 @@ const cloudreveSessionKey = "cloudreve-session"
 
 const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
 
-func request(method string, url string, res interface{}, beforeRequest resty.RequestMiddleware) error {
-	req := client.R()
-
-	req.SetResult(&res)
-	req.SetHeaders(map[string]string{
-		"Accept":     "application/json, text/plain, */*",
-		"User-Agent": ua,
-	})
-	req.SetCookie(&http.Cookie{Name: cloudreveSessionKey, Value: cloudreveSession})
+func request(method string, url string, res interface{}, beforeRequest req.RequestMiddleware) error {
+	r := req.R()
+	r.SetSuccessResult(&res)
+	r.SetCookies(&http.Cookie{Name: cloudreveSessionKey, Value: cloudreveSession})
 	if beforeRequest != nil {
-		err := beforeRequest(client, req)
+		err := beforeRequest(r.GetClient(), r)
 		if err != nil {
 			return err
 		}
 	}
-	resp, err := req.Execute(method, url)
+
+	resp, err := r.Send(method, url)
 	if err != nil {
 		return err
 	}
-	if !resp.IsSuccess() {
+	if !resp.IsSuccessState() {
 		return errors.New(resp.String())
 	}
 	for _, cookie := range resp.Cookies() {
@@ -138,27 +132,23 @@ func (pr *ProgressReader) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-func preRequestHook(c *resty.Client, h *http.Request) error {
-	if h.Body != nil {
-		size := h.ContentLength
-		pr := &ProgressReader{
-			ReadCloser: h.Body,
-			startTime:  time.Now(),
-			totalSize:  size,
-		}
-		h.Body = pr
-	}
-	return nil
-}
-
 func initClient() {
 	initCloudreveSession()
-	client = resty.New().
-		SetRetryCount(3).
-		SetRetryResetReaders(true).
-		SetTimeout(30 * time.Minute).
-		SetRateLimiter(rate.NewLimiter(rate.Every(time.Second), 30)).
-		SetDebug(flags.Debug).
-		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
-		SetPreRequestHook(preRequestHook)
+	//req.DevMode() // 将包名视为 Client 直接调用，启用开发模式
+	client := req.SetCommonHeader("User-Agent", ua).
+		SetCommonHeader("Accept", "application/json, text/plain, */*").
+		SetTimeout(30 * time.Minute)
+	client.GetTransport().
+		WrapRoundTripFunc(func(rt http.RoundTripper) req.HttpRoundTripFunc {
+			return func(req *http.Request) (resp *http.Response, err error) {
+				// 由于内容长度部分是由后台计算的，所以这里需要手动设置
+				if req.ContentLength <= 0 {
+					if req.Header.Get("Content-Length") != "" {
+						req.ContentLength, _ = strconv.ParseInt(req.Header.Get("Content-Length"), 10, 64)
+					}
+				}
+				return rt.RoundTrip(req)
+			}
+		})
+
 }

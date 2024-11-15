@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/caiguanhao/opencc/configs/t2s"
-	"github.com/go-resty/resty/v2"
+	"github.com/imroc/req/v3"
 	"io"
 	"net/http"
 	"os"
@@ -49,7 +49,7 @@ func directory() (*DirectoryResp, error) {
 
 func preUpload(uploadBody *USessionReq) (*USessionInfo, error) {
 	var r Resp[USessionInfo]
-	err := request(http.MethodPut, reqPrefix+"/file/upload", &r, func(c *resty.Client, r *resty.Request) error {
+	err := request(http.MethodPut, reqPrefix+"/file/upload", &r, func(c *req.Client, r *req.Request) error {
 		r.SetBody(uploadBody)
 		return nil
 	})
@@ -69,20 +69,40 @@ func preUpload(uploadBody *USessionReq) (*USessionInfo, error) {
 
 func uploading(url string, chunk *ChunkData) error {
 	// 计算chunk数量
-	var result map[string]any
-	err := request(http.MethodPut, url, &result, func(c *resty.Client, r *resty.Request) error {
-		r.SetContentLength(true)
-		r.SetHeader("Content-Type", "application/octet-stream")
-		r.SetHeader("Content-Range", "bytes "+strconv.Itoa(chunk.StartSize)+"-"+strconv.Itoa(chunk.EndSize)+"/"+strconv.Itoa(chunk.TotalSize))
-		r.SetBody(chunk.Buf)
-		return nil
-	})
-	return err
+	//var result map[string]any
+	//err := request(http.MethodPut, url, &result, func(c *resty.Client, r *resty.Request) error {
+	//	//r.SetHeader("Content-Length", strconv.Itoa(chunk.EndSize+1))
+	//	r.SetContentLength(true)
+	//	r.SetHeader("Content-Type", "application/octet-stream")
+	//	r.SetHeader("Content-Range", "bytes "+strconv.Itoa(chunk.StartSize)+"-"+strconv.Itoa(chunk.EndSize)+"/"+strconv.Itoa(chunk.TotalSize))
+	//	r.SetBody(chunk.chunkReader)
+	//	return nil
+	//})
+	//return err
+	pr := &ProgressReader{
+		ReadCloser: io.NopCloser(chunk.chunkReader),
+		startTime:  time.Now(),
+		totalSize:  int64(chunk.EndSize - chunk.StartSize + 1),
+	}
+
+	response, err := req.SetBody(pr).
+		SetContentType("application/octet-stream").
+		SetHeader("Content-Length", strconv.Itoa(chunk.EndSize-chunk.StartSize+1)).
+		SetHeader("Content-Range", "bytes "+strconv.Itoa(chunk.StartSize)+"-"+strconv.Itoa(chunk.EndSize)+"/"+strconv.Itoa(chunk.TotalSize)).
+		Put(url)
+	if err != nil {
+		return err
+	}
+	if !response.IsSuccessState() {
+		return errors.New(response.String())
+	}
+
+	return nil
 }
 
 func finishUpload(sessionId string) error {
 	var result Resp[string]
-	err := request(http.MethodPost, reqPrefix+"/callback/onedrive/finish/"+sessionId, result, func(c *resty.Client, req *resty.Request) error {
+	err := request(http.MethodPost, reqPrefix+"/callback/onedrive/finish/"+sessionId, result, func(c *req.Client, req *req.Request) error {
 		req.SetHeader("Content-Type", "application/x-www-form-urlencoded")
 		req.SetBody("{}")
 		return nil
@@ -103,9 +123,12 @@ func finishUpload(sessionId string) error {
 type ChunkConsumer func(chunk *ChunkData) error
 
 func chunkSplit(file *os.File, uploadedChunkNum, chunkSize int, chunkKey string, consumer ChunkConsumer) error {
-	var buf []byte
 	var chunk int
 	stat, err := file.Stat()
+	if err != nil {
+		fmt.Println("get data stat err", err)
+		return err
+	}
 	totalSize := int(stat.Size())
 	chunkNum := (totalSize / chunkSize) + 1
 	fmt.Printf("split chunk total size: %d, num:%d \n", totalSize, chunkNum)
@@ -122,30 +145,25 @@ func chunkSplit(file *os.File, uploadedChunkNum, chunkSize int, chunkKey string,
 		}
 	}
 	for {
-		var n int
-		buf = make([]byte, chunkSize)
-		n, err = io.ReadAtLeast(file, buf, chunkSize)
-		if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
-			if err == io.EOF {
-				break
-			}
-			return err
+		reader := &io.LimitedReader{
+			R: file,
+			N: int64(chunkSize),
 		}
-
-		if n == 0 {
-			break
-		}
-		buf = buf[:n]
 		startSize := chunk * chunkSize
-		endSize := (chunk * chunkSize) + n - 1
+		endSize := (chunk + 1) * chunkSize
+		readEnd := false
+		if endSize >= totalSize {
+			endSize = totalSize
+			readEnd = true
+		}
 
 		chunkData := &ChunkData{
-			StartSize: startSize,
-			EndSize:   endSize,
-			ChunkSize: chunkSize,
-			TotalSize: totalSize,
-			ChunkNum:  chunk,
-			Buf:       buf,
+			StartSize:   startSize,
+			EndSize:     endSize - 1,
+			ChunkSize:   chunkSize,
+			TotalSize:   totalSize,
+			ChunkNum:    chunk,
+			chunkReader: reader,
 		}
 
 		percent := float64(endSize+1) / float64(totalSize) * 100
@@ -157,6 +175,9 @@ func chunkSplit(file *os.File, uploadedChunkNum, chunkSize int, chunkKey string,
 		fmt.Printf("success upload chunk: %d , %.2f%% \n", chunk+1, percent)
 		// 设置分片缓存
 		_ = setCache(chunkKey, strconv.Itoa(chunk))
+		if readEnd {
+			break
+		}
 		chunk++
 	}
 	return nil
@@ -389,5 +410,5 @@ func uploadFile(path string, directoryResp *DirectoryResp, relPath string) error
 
 func DeleteAllSession() {
 	initClient()
-	request(resty.MethodDelete, reqPrefix+"/file/upload", nil, nil)
+	request(http.MethodDelete, reqPrefix+"/file/upload", nil, nil)
 }
