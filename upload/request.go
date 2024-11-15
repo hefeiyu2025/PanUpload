@@ -141,7 +141,7 @@ func initClient() {
 	client.GetTransport().
 		WrapRoundTripFunc(func(rt http.RoundTripper) req.HttpRoundTripFunc {
 			return func(req *http.Request) (resp *http.Response, err error) {
-				// 由于内容长度部分是由后台计算的，所以这里需要手动设置
+				// 由于内容长度部分是由后台计算的，所以这里需要手动设置,http默认会过滤掉header.reqWriteExcludeHeader
 				if req.ContentLength <= 0 {
 					if req.Header.Get("Content-Length") != "" {
 						req.ContentLength, _ = strconv.ParseInt(req.Header.Get("Content-Length"), 10, 64)
