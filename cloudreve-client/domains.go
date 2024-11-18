@@ -2,16 +2,21 @@ package cloudreve
 
 import "time"
 
-// Response 基础序列化器
-type Response struct {
+type Json map[string]interface{}
+
+// Resp 基础序列化器
+type Resp struct {
 	Code  int    `json:"code"`
 	Msg   string `json:"msg"`
 	Error string `json:"error,omitempty"`
 }
 
-type ResponseData[T any] struct {
-	Response
-	Data T `json:"data,omitempty"`
+// RespData 基础序列化器
+type RespData[T any] struct {
+	Code  int    `json:"code"`
+	Msg   string `json:"msg"`
+	Error string `json:"error,omitempty"`
+	Data  T      `json:"data,omitempty"`
 }
 
 type SiteConfig struct {
@@ -45,7 +50,7 @@ type User struct {
 	PreferredTheme string    `json:"preferred_theme"`
 	Anonymous      bool      `json:"anonymous"`
 	Group          group     `json:"group"`
-	Tags           []tag     `json:"tags"`
+	Tags           []Tag     `json:"tags"`
 }
 
 type group struct {
@@ -62,7 +67,7 @@ type group struct {
 	AllowWebDAVProxy     bool   `json:"allowWebDAVProxy"`
 }
 
-type tag struct {
+type Tag struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
 	Icon       string `json:"icon"`
@@ -71,7 +76,7 @@ type tag struct {
 	Expression string `json:"expression"`
 }
 
-type storage struct {
+type Storage struct {
 	Used  uint64 `json:"used"`
 	Free  uint64 `json:"free"`
 	Total uint64 `json:"total"`
@@ -101,4 +106,189 @@ type UploadCredential struct {
 	KeyTime     string   `json:"keyTime,omitempty"` // COS用有效期
 	Policy      string   `json:"policy,omitempty"`
 	CompleteURL string   `json:"completeURL,omitempty"`
+}
+
+// Sources 获取外链的结果响应
+type Sources struct {
+	URL    string `json:"url"`
+	Name   string `json:"name"`
+	Parent uint   `json:"parent"`
+	Error  string `json:"error,omitempty"`
+}
+
+// ObjectProps 文件、目录对象的详细属性信息
+type ObjectProps struct {
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	Policy         string    `json:"policy"`
+	Size           uint64    `json:"size"`
+	ChildFolderNum int       `json:"child_folder_num"`
+	ChildFileNum   int       `json:"child_file_num"`
+	Path           string    `json:"path"`
+
+	QueryDate time.Time `json:"query_date"`
+}
+
+// ObjectList 文件、目录列表
+type ObjectList struct {
+	Parent  string         `json:"parent,omitempty"`
+	Objects []Object       `json:"objects"`
+	Policy  *PolicySummary `json:"policy,omitempty"`
+}
+
+// Object 文件或者目录
+type Object struct {
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Path          string    `json:"path"`
+	Thumb         bool      `json:"thumb"`
+	Size          uint64    `json:"size"`
+	Type          string    `json:"type"`
+	Date          time.Time `json:"date"`
+	CreateDate    time.Time `json:"create_date"`
+	Key           string    `json:"key,omitempty"`
+	SourceEnabled bool      `json:"source_enabled"`
+}
+
+// PolicySummary 用于前端组件使用的存储策略概况
+type PolicySummary struct {
+	ID       string   `json:"id"`
+	Name     string   `json:"name"`
+	Type     string   `json:"type"`
+	MaxSize  uint64   `json:"max_size"`
+	FileType []string `json:"file_type"`
+}
+
+// ItemMoveReq 处理多文件/目录移动
+type ItemMoveReq struct {
+	SrcDir string `json:"src_dir"`
+	Src    Item   `json:"src"`
+	Dst    string `json:"dst" `
+}
+
+// ItemRenameReq 处理多文件/目录重命名
+type ItemRenameReq struct {
+	Src     Item   `json:"src"`
+	NewName string `json:"new_name" `
+}
+
+// Item 处理多文件/目录相关服务
+type Item struct {
+	Items []string `json:"items"`
+	Dirs  []string `json:"dirs"`
+}
+
+// ItemReq 处理多文件/目录
+type ItemReq struct {
+	Item
+	Force      bool `json:"force"`
+	UnlinkOnly bool `json:"unlink"`
+}
+
+// ItemPropertyReq 获取对象属性服务
+type ItemPropertyReq struct {
+	Id        string
+	TraceRoot bool
+	IsFolder  bool
+}
+
+// ShareCreateReq 创建新分享服务
+type ShareCreateReq struct {
+	SourceID        string `json:"id"`
+	IsDir           bool   `json:"is_dir"`
+	Password        string `json:"password"`
+	RemainDownloads int    `json:"downloads"`
+	Expire          int    `json:"expire"`
+	Preview         bool   `json:"preview"`
+}
+
+// Share 分享信息序列化
+type Share struct {
+	Key        string        `json:"key"`
+	Locked     bool          `json:"locked"`
+	IsDir      bool          `json:"is_dir"`
+	CreateDate time.Time     `json:"create_date,omitempty"`
+	Downloads  int           `json:"downloads"`
+	Views      int           `json:"views"`
+	Expire     int64         `json:"expire"`
+	Preview    bool          `json:"preview"`
+	Creator    *ShareCreator `json:"creator,omitempty"`
+	Source     *ShareSource  `json:"source,omitempty"`
+}
+
+type ShareCreator struct {
+	Key       string `json:"key"`
+	Nick      string `json:"nick"`
+	GroupName string `json:"group_name"`
+}
+
+type ShareSource struct {
+	Name string `json:"name"`
+	Size uint64 `json:"size"`
+}
+
+// MyShareItem 我的分享列表条目
+type MyShareItem struct {
+	Key             string       `json:"key"`
+	IsDir           bool         `json:"is_dir"`
+	Password        string       `json:"password"`
+	CreateDate      time.Time    `json:"create_date,omitempty"`
+	Downloads       int          `json:"downloads"`
+	RemainDownloads int          `json:"remain_downloads"`
+	Views           int          `json:"views"`
+	Expire          int64        `json:"expire"`
+	Preview         bool         `json:"preview"`
+	Source          *ShareSource `json:"source,omitempty"`
+}
+
+type ShareList struct {
+	total int
+	items []MyShareItem
+}
+
+// 定义枚举类型
+type ShareUpdateReqProp string
+
+// 定义枚举值
+const (
+	Password       ShareUpdateReqProp = "password"
+	PreviewEnabled ShareUpdateReqProp = "preview_enabled"
+)
+
+// ShareUpdateReq 分享更新服务
+type ShareUpdateReq struct {
+	Id    string             `json:"id"`
+	Prop  ShareUpdateReqProp `json:"prop"`
+	Value string             `json:"value"`
+}
+
+// 定义枚举类型
+type SearchType string
+
+// 定义枚举值
+const (
+	KEYWORDS SearchType = "keywords"
+	IMAGE    SearchType = "image"
+	VIDEO    SearchType = "video"
+	AUDIO    SearchType = "audio"
+	DOC      SearchType = "doc"
+	TAG      SearchType = "tag"
+)
+
+// ShareListReq 列出分享
+type ShareListReq struct {
+	Page     uint
+	OrderBy  string `binding:"required,eq=created_at|eq=downloads|eq=views"`
+	Order    string `binding:"required,eq=DESC|eq=ASC"`
+	Keywords string
+}
+type OneDriveUploadCallback func(sessionId string, chunkNum int) error
+
+type OneDriveUploadReq struct {
+	SessionId  string
+	UploadUrl  string
+	LocalPath  string
+	StartChunk int64
+	ChunkSize  int64
+	Callback   OneDriveUploadCallback
 }
