@@ -3,7 +3,7 @@ module PanUpload
 go 1.23.0
 
 require (
-	github.com/hefeiyu2025/cloudreve-client v1.0.1
+	github.com/hefeiyu2025/cloudreve-client v1.0.3
 	github.com/spf13/cobra v1.8.1
 )
 

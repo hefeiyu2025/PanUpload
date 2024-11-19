@@ -31,7 +31,7 @@ func initCloudreveSession() string {
 		fmt.Println("Error reading session file:", flags.SessionPath, ",file is empty")
 		os.Exit(1)
 	}
-	fmt.Println("read session file:", flags.SessionPath, " success, session:", data)
+	fmt.Println("read session file:", flags.SessionPath, " success, session:", string(data))
 	return string(data)
 }
 
@@ -52,10 +52,11 @@ func refreshCloudreveSession(cloudreveSession string) {
 	fmt.Println("Success refresh session file:", flags.SessionPath)
 }
 
-func init() {
+func initClient() {
 	cloudreveClient = cloudreve.NewClientWithRefresh(cloudreveUrl, initCloudreveSession(), func(session string) {
 		refreshCloudreveSession(session)
 	})
+	//cloudreveClient = cloudreve.NewClient(cloudreveUrl, initCloudreveSession())
 }
 
 func exitByError(err error) {
@@ -66,7 +67,7 @@ func exitByError(err error) {
 }
 
 func StartUpload(file string) {
-
+	initClient()
 	directoryResp, err := cloudreveClient.ListDirectory(flags.RemotePath)
 	exitByError(err)
 	// 默认为当前目录
@@ -95,14 +96,14 @@ func StartUpload(file string) {
 	_, sessionName := filepath.Split(flags.SessionPath)
 	err = cloudreveClient.UploadPath(cloudreve.OneStepUploadPathReq{
 		LocalPath:   root,
-		RemotePath:  flags.RemotePath,
+		RemotePath:  flags.RemotePath + "/demo",
 		PolicyId:    directoryResp.Data.Policy.ID,
 		Resumable:   true,
 		SkipFileErr: true,
 		SuccessDel:  flags.Delete,
 		IgnorePaths: flags.GetIgnorePaths(),
 		IgnoreFiles: []string{sessionName},
-		Extensions:  flags.GetExtensions(),
+		//Extensions:  flags.GetExtensions(),
 	})
 
 	if err != nil {
