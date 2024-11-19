@@ -2,250 +2,60 @@ package upload
 
 import (
 	"PanUpload/cmd/flags"
-	"crypto/md5"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/caiguanhao/opencc/configs/t2s"
-	"github.com/imroc/req/v3"
+	"github.com/hefeiyu2025/cloudreve-client"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
 )
 
-const reqPrefix = "https://pan.huang1111.cn/api/v3"
+const cloudreveUrl = "https://pan.huang1111.cn"
 
-// 刷新session
-func config() error {
-	var r Resp[any]
-	err := request(http.MethodGet, reqPrefix+"/site/config", &r, nil)
+var cloudreveClient *cloudreve.CloudreveClient
+
+func initCloudreveSession() string {
+	session, err := os.Open(flags.SessionPath)
 	if err != nil {
-		return err
+		fmt.Println("open session file error:", flags.SessionPath, err)
+		os.Exit(1)
 	}
-	if r.Code != 0 {
-		return fmt.Errorf("code: %d, msg: %s", r.Code, r.Msg)
+	defer session.Close()
+
+	data, err := io.ReadAll(session)
+	if err != nil {
+		fmt.Println("Error reading session file:", flags.SessionPath, err)
+		os.Exit(1)
 	}
-	return nil
+
+	if len(data) == 0 {
+		fmt.Println("Error reading session file:", flags.SessionPath, ",file is empty")
+		os.Exit(1)
+	}
+	fmt.Println("read session file:", flags.SessionPath, " success, session:", data)
+	return string(data)
 }
 
-// 列出目录，获取policy.id
-func directory() (*DirectoryResp, error) {
-	var r Resp[DirectoryResp]
-	err := request(http.MethodGet, reqPrefix+"/directory%2F", &r, nil)
+func refreshCloudreveSession(cloudreveSession string) {
+	session, err := os.OpenFile(flags.SessionPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		return nil, err
+		fmt.Println("open session file error:", flags.SessionPath, err)
+		os.Exit(1)
 	}
-	if r.Code != 0 {
-		return nil, fmt.Errorf("code: %d, msg: %s", r.Code, r.Msg)
+	defer session.Close()
+
+	// 写入数据到文件
+	_, err = session.WriteString(cloudreveSession)
+	if err != nil {
+		fmt.Println("Error writing to session file:", flags.SessionPath, err)
+		os.Exit(1)
 	}
-	return r.Data, nil
+	fmt.Println("Success refresh session file:", flags.SessionPath)
 }
 
-func preUpload(uploadBody *USessionReq) (*USessionInfo, error) {
-	var r Resp[USessionInfo]
-	err := request(http.MethodPut, reqPrefix+"/file/upload", &r, func(c *req.Client, r *req.Request) error {
-		r.SetBody(uploadBody)
-		return nil
+func init() {
+	cloudreveClient = cloudreve.NewClientWithRefresh(cloudreveUrl, initCloudreveSession(), func(session string) {
+		refreshCloudreveSession(session)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if r.Code != 0 {
-		if r.Code == 40004 {
-			return nil, ObjectExistError{
-				Message: "文件已存在",
-			}
-		}
-		return nil, fmt.Errorf("code: %d, msg: %s", r.Code, r.Msg)
-	}
-	return r.Data, nil
-}
-
-func uploading(url string, chunk *ChunkData) error {
-	// 计算chunk数量
-	//var result map[string]any
-	//err := request(http.MethodPut, url, &result, func(c *resty.Client, r *resty.Request) error {
-	//	//r.SetHeader("Content-Length", strconv.Itoa(chunk.EndSize+1))
-	//	r.SetContentLength(true)
-	//	r.SetHeader("Content-Type", "application/octet-stream")
-	//	r.SetHeader("Content-Range", "bytes "+strconv.Itoa(chunk.StartSize)+"-"+strconv.Itoa(chunk.EndSize)+"/"+strconv.Itoa(chunk.TotalSize))
-	//	r.SetBody(chunk.chunkReader)
-	//	return nil
-	//})
-	//return err
-	pr := &ProgressReader{
-		ReadCloser: io.NopCloser(chunk.chunkReader),
-		startTime:  time.Now(),
-		totalSize:  int64(chunk.EndSize - chunk.StartSize + 1),
-	}
-
-	response, err := req.SetBody(pr).
-		SetContentType("application/octet-stream").
-		SetHeader("Content-Length", strconv.Itoa(chunk.EndSize-chunk.StartSize+1)).
-		SetHeader("Content-Range", "bytes "+strconv.Itoa(chunk.StartSize)+"-"+strconv.Itoa(chunk.EndSize)+"/"+strconv.Itoa(chunk.TotalSize)).
-		Put(url)
-	if err != nil {
-		return err
-	}
-	if !response.IsSuccessState() {
-		return errors.New(response.String())
-	}
-
-	return nil
-}
-
-func finishUpload(sessionId string) error {
-	var result Resp[string]
-	err := request(http.MethodPost, reqPrefix+"/callback/onedrive/finish/"+sessionId, result, func(c *req.Client, req *req.Request) error {
-		req.SetHeader("Content-Type", "application/x-www-form-urlencoded")
-		req.SetBody("{}")
-		return nil
-	})
-	if err == nil && result.Code == 0 {
-		var key string
-		err = getCache(sessionId, &key)
-		if err == nil {
-			err = delCache(key)
-			if err == nil {
-				err = delCache(sessionId)
-			}
-		}
-	}
-	return err
-}
-
-type ChunkConsumer func(chunk *ChunkData) error
-
-func chunkSplit(file *os.File, uploadedChunkNum, chunkSize int, chunkKey string, consumer ChunkConsumer) error {
-	var chunk int
-	stat, err := file.Stat()
-	if err != nil {
-		fmt.Println("get data stat err", err)
-		return err
-	}
-	totalSize := int(stat.Size())
-	chunkNum := (totalSize / chunkSize) + 1
-	fmt.Printf("split chunk total size: %d, num:%d \n", totalSize, chunkNum)
-	if uploadedChunkNum >= 0 {
-		chunk = uploadedChunkNum + 1
-		if chunk > chunkNum {
-			fmt.Println("file chunk is uploaded before")
-			return nil
-		}
-		// 将文件指针移动到指定的分片位置
-		ret, _ := file.Seek(int64(chunk*chunkSize), 0)
-		if ret != 0 {
-			fmt.Println("file seek to " + strconv.FormatInt(ret, 10))
-		}
-	}
-	for {
-		reader := &io.LimitedReader{
-			R: file,
-			N: int64(chunkSize),
-		}
-		startSize := chunk * chunkSize
-		endSize := (chunk + 1) * chunkSize
-		readEnd := false
-		if endSize >= totalSize {
-			endSize = totalSize
-			readEnd = true
-		}
-
-		chunkData := &ChunkData{
-			StartSize:   startSize,
-			EndSize:     endSize - 1,
-			ChunkSize:   chunkSize,
-			TotalSize:   totalSize,
-			ChunkNum:    chunk,
-			chunkReader: reader,
-		}
-
-		percent := float64(endSize+1) / float64(totalSize) * 100
-		fmt.Println("start upload chunk: ", chunk+1)
-		err := consumer(chunkData)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("success upload chunk: %d , %.2f%% \n", chunk+1, percent)
-		// 设置分片缓存
-		_ = setCache(chunkKey, strconv.Itoa(chunk))
-		if readEnd {
-			break
-		}
-		chunk++
-	}
-	return nil
-}
-
-func preUploadCache(fileInfo os.FileInfo, policyId, path string) (*USessionInfo, error) {
-	newFileName := fileInfo.Name()
-	newRemotePath := path
-	for _, removeStr := range flags.GetRemoveStrs() {
-		newFileName = strings.ReplaceAll(newFileName, removeStr, "")
-		newRemotePath = strings.ReplaceAll(newRemotePath, removeStr, "")
-	}
-	// 使用正则表达式替换字符串
-	re := regexp.MustCompile(flags.RemoveReg)
-	newRemotePath = re.ReplaceAllString(newRemotePath, "")
-
-	newFileName = strings.TrimSpace(newFileName)
-	newFileName = t2s.Dicts.Convert(newFileName)
-	newRemotePath = strings.TrimSpace(newRemotePath)
-	newRemotePath = t2s.Dicts.Convert(newRemotePath)
-	reqBody := &USessionReq{
-		Path:         newRemotePath,
-		Size:         fileInfo.Size(),
-		Name:         newFileName,
-		PolicyId:     policyId,
-		LastModified: fileInfo.ModTime().UnixMilli(),
-	}
-	key, err := md5Hash(reqBody)
-	if err != nil {
-		return nil, err
-	}
-	var resp USessionInfo
-	err = getCache(key, &resp)
-	if err != nil || (resp.Expires > 0 && resp.Expires < int(time.Now().Unix())) {
-		upload, preErr := preUpload(reqBody)
-		if preErr == nil {
-			if resp.SessionID != "" {
-				_ = delCache(resp.SessionID)
-				_ = delCache("chunk_" + resp.SessionID)
-			}
-			preErr = setCache(key, upload)
-			if preErr == nil {
-				preErr = setCache(upload.SessionID, key)
-				resp = *upload
-			}
-		}
-		if err != nil {
-			err = preErr
-		}
-	}
-	return &resp, err
-}
-
-func md5Hash(params any) (string, error) {
-	// 将结构体序列化为JSON
-	jsonData, err := json.Marshal(params)
-	if err != nil {
-		fmt.Println("Md5 error:", err)
-		return "", err
-	}
-
-	// 计算JSON数据的MD5
-	hash := md5.Sum(jsonData)
-	md5Str := hex.EncodeToString(hash[:])
-
-	fmt.Println("MD5 Hash:", md5Str)
-
-	return md5Str, nil
 }
 
 func exitByError(err error) {
@@ -255,29 +65,9 @@ func exitByError(err error) {
 	}
 }
 
-func isEmpty(dirPath string) (bool, error) {
-	dir, err := os.Open(dirPath)
-	if err != nil {
-		return false, err
-	}
-	defer dir.Close()
-	//如果目录不为空，Readdirnames 会返回至少一个文件名
-	_, err = dir.Readdirnames(1)
-	if err == io.EOF {
-		return true, nil
-	}
-	return false, err
-}
-
 func StartUpload(file string) {
-	initClient()
-	initDiskv()
-	// 超过6小时才刷新session
-	if time.Now().UnixMicro()-sessionLastTime.UnixMicro() >= 6*time.Hour.Microseconds() {
-		err := config()
-		exitByError(err)
-	}
-	directoryResp, err := directory()
+
+	directoryResp, err := cloudreveClient.ListDirectory(flags.RemotePath)
 	exitByError(err)
 	// 默认为当前目录
 	root := "./"
@@ -291,124 +81,32 @@ func StartUpload(file string) {
 		if fileInfo.IsDir() {
 			root = file
 		} else {
-			err = uploadFile(file, directoryResp, "")
-			if err == nil && flags.Delete {
-				// 上传成功则移除文件了
-				_ = os.Remove(file)
-			}
+			err = cloudreveClient.UploadFile(cloudreve.OneStepUploadFileReq{
+				LocalFile:  file,
+				RemotePath: flags.RemotePath,
+				PolicyId:   directoryResp.Data.Policy.ID,
+				Resumable:  true,
+				SuccessDel: flags.Delete,
+			})
 			exitByError(err)
 			os.Exit(2)
 		}
 	}
-
-	cachePathAbs, _ := filepath.Abs(flags.CachePath)
-	sessionPathAbs, _ := filepath.Abs(flags.SessionPath)
-	// 遍历目录
-	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			fmt.Println(err) // 可以选择如何处理错误
-			return nil
-		}
-		if info.IsDir() {
-			pathAbs, _ := filepath.Abs(path)
-			if pathAbs == cachePathAbs {
-				return filepath.SkipDir
-			}
-			for _, ignorePath := range flags.GetIgnorePaths() {
-				if filepath.Base(path) == ignorePath {
-					return filepath.SkipDir
-				}
-			}
-		} else {
-			pathAbs, _ := filepath.Abs(path)
-			if pathAbs == sessionPathAbs {
-				return nil
-			}
-			// 获取相对于root的相对路径
-			relPath, _ := filepath.Rel(root, path)
-			relPath = strings.Replace(relPath, "\\", "/", -1)
-			relPath = strings.Replace(relPath, info.Name(), "", 1)
-			needUpload := false
-			for _, extension := range flags.GetExtensions() {
-				if strings.HasSuffix(info.Name(), extension) {
-					needUpload = true
-				}
-			}
-			if needUpload {
-				err = uploadFile(path, directoryResp, relPath)
-				if err == nil && flags.Delete {
-					fmt.Println("uploaded added", path)
-					// 上传成功则移除文件了
-					_ = os.Remove(path)
-					dir := filepath.Dir(path)
-					if dir != "." {
-						empty, _ := isEmpty(dir)
-						if empty {
-							_ = os.Remove(dir)
-						}
-					}
-				}
-			}
-		}
-		return nil
+	_, sessionName := filepath.Split(flags.SessionPath)
+	err = cloudreveClient.UploadPath(cloudreve.OneStepUploadPathReq{
+		LocalPath:   root,
+		RemotePath:  flags.RemotePath,
+		PolicyId:    directoryResp.Data.Policy.ID,
+		Resumable:   true,
+		SkipFileErr: true,
+		SuccessDel:  flags.Delete,
+		IgnorePaths: flags.GetIgnorePaths(),
+		IgnoreFiles: []string{sessionName},
+		Extensions:  flags.GetExtensions(),
 	})
+
 	if err != nil {
 		panic(err)
 	}
-}
 
-func uploadFile(path string, directoryResp *DirectoryResp, relPath string) error {
-	startTime := time.Now()
-	fmt.Println("file start upload,", path, startTime.Format("2006-01-02 15:04:05"))
-	file, err := os.Open(path)
-	if err != nil {
-		fmt.Println("file upload error,", path, err)
-		return err
-	}
-	defer file.Close()
-
-	info, err := file.Stat()
-	if err != nil {
-		fmt.Println("file read stat error,", path, err)
-		return err
-	}
-	if info.Size() == 0 {
-		fmt.Println("file size is zero, give up,", path)
-		return err
-	}
-	uSessionInfo, err := preUploadCache(info, directoryResp.Policy.Id, flags.RemotePath+relPath)
-	if err != nil {
-		if errors.As(err, &ObjectExistError{}) {
-			fmt.Println("file is exist,", info.Name())
-			return nil
-		} else {
-			fmt.Println("file upload error,", info.Name(), err)
-			return err
-		}
-	}
-	cacheChunkNum := "-1"
-	chunkKey := "chunk_" + uSessionInfo.SessionID
-	_ = getCache(chunkKey, &cacheChunkNum)
-	uploadedChunkNum, _ := strconv.Atoi(cacheChunkNum)
-
-	err = chunkSplit(file, uploadedChunkNum, uSessionInfo.ChunkSize, chunkKey, func(chunk *ChunkData) error {
-		return uploading(uSessionInfo.UploadURLs[0], chunk)
-	})
-	if err != nil {
-		fmt.Println("file upload error,", info.Name(), err)
-		return err
-	}
-	err = finishUpload(uSessionInfo.SessionID)
-	if err != nil {
-		fmt.Println("file finish upload error,", info.Name(), err)
-		return err
-	}
-	_ = delCache(chunkKey)
-	fmt.Println("file success upload,", path, time.Now().Format("2006-01-02 15:04:05"), time.Since(startTime))
-	return nil
-}
-
-func DeleteAllSession() {
-	initClient()
-	request(http.MethodDelete, reqPrefix+"/file/upload", nil, nil)
 }

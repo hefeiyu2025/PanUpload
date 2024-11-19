@@ -3,9 +3,7 @@ module PanUpload
 go 1.23.0
 
 require (
-	github.com/caiguanhao/opencc v1.1.9
-	github.com/imroc/req/v3 v3.48.0
-	github.com/peterbourgon/diskv/v3 v3.0.1
+	github.com/hefeiyu2025/cloudreve-client v1.0.1
 	github.com/spf13/cobra v1.8.1
 )
 
@@ -17,11 +15,11 @@ require (
 	github.com/google/pprof v0.0.0-20240910150728-a0b0bb1d4134 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/imroc/req/v3 v3.48.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
-	github.com/liuzl/cedar-go v0.0.0-20170805034717-80a9c64b256d // indirect
-	github.com/liuzl/da v0.0.0-20180704015230-14771aad5b1d // indirect
 	github.com/onsi/ginkgo/v2 v2.20.2 // indirect
+	github.com/peterbourgon/diskv/v3 v3.0.1 // indirect
 	github.com/quic-go/qpack v0.5.1 // indirect
 	github.com/quic-go/quic-go v0.47.0 // indirect
 	github.com/refraction-networking/utls v1.6.7 // indirect
