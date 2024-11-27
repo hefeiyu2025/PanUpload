@@ -3,6 +3,7 @@ package upload
 import (
 	"PanUpload/cmd/flags"
 	"fmt"
+	"github.com/caiguanhao/opencc/configs/t2s"
 	"github.com/hefeiyu2025/cloudreve-client"
 	"io"
 	"os"
@@ -88,6 +89,9 @@ func StartUpload(file string) {
 				PolicyId:   directoryResp.Data.Policy.ID,
 				Resumable:  true,
 				SuccessDel: flags.Delete,
+				RemoteTransfer: func(remotePath, remoteName string) (string, string) {
+					return t2s.Dicts.Convert(remotePath), t2s.Dicts.Convert(remoteName)
+				},
 			})
 			exitByError(err)
 			os.Exit(2)
@@ -104,6 +108,9 @@ func StartUpload(file string) {
 		IgnorePaths: flags.GetIgnorePaths(),
 		IgnoreFiles: []string{sessionName},
 		//Extensions:  flags.GetExtensions(),
+		RemoteTransfer: func(remotePath, remoteName string) (string, string) {
+			return t2s.Dicts.Convert(remotePath), t2s.Dicts.Convert(remoteName)
+		},
 	})
 
 	if err != nil {
