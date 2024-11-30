@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 const cloudreveUrl = "https://pan.huang1111.cn"
@@ -100,16 +102,31 @@ func StartUpload(file string) {
 	_, sessionName := filepath.Split(flags.SessionPath)
 	err = cloudreveClient.UploadPath(cloudreve.OneStepUploadPathReq{
 		LocalPath:   root,
-		RemotePath:  flags.RemotePath + "/demo",
+		RemotePath:  flags.RemotePath,
 		PolicyId:    directoryResp.Data.Policy.ID,
 		Resumable:   true,
 		SkipFileErr: true,
 		SuccessDel:  flags.Delete,
 		IgnorePaths: flags.GetIgnorePaths(),
 		IgnoreFiles: []string{sessionName},
-		//Extensions:  flags.GetExtensions(),
+		Extensions:  flags.GetExtensions(),
 		RemoteTransfer: func(remotePath, remoteName string) (string, string) {
-			return t2s.Dicts.Convert(remotePath), t2s.Dicts.Convert(remoteName)
+			newFileName := remoteName
+			newRemotePath := remotePath
+			for _, removeStr := range flags.GetRemoveStrs() {
+				newFileName = strings.ReplaceAll(newFileName, removeStr, "")
+				newRemotePath = strings.ReplaceAll(newRemotePath, removeStr, "")
+			}
+			// 使用正则表达式替换字符串
+			re := regexp.MustCompile(flags.RemoveReg)
+			newRemotePath = re.ReplaceAllString(newRemotePath, "")
+
+			newFileName = strings.TrimSpace(newFileName)
+			newFileName = t2s.Dicts.Convert(newFileName)
+			newRemotePath = strings.TrimSpace(newRemotePath)
+			newRemotePath = t2s.Dicts.Convert(newRemotePath)
+
+			return newRemotePath, newFileName
 		},
 	})
 
