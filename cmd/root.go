@@ -38,6 +38,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&flags.RemoveStr, "remove-str", "t", "TVBOXNOW,ViuTV", "替换的名称")
 	RootCmd.PersistentFlags().StringVarP(&flags.RemoveReg, "remove-reg", "g", "\\(\\d+\\)", "替换的正则表达表达式")
 	RootCmd.PersistentFlags().BoolVarP(&flags.Delete, "delete", "o", false, "上传成功是否删除文件")
+	RootCmd.PersistentFlags().BoolVarP(&flags.DeleteAllSession, "del-session", "d", false, "上传前是否清空所有session")
 	RootCmd.PersistentFlags().StringVarP(&flags.UploadExtensions, "upload-extensions", "e", ".mp4,.avi,.mkv,.flv,.mov,.rmvb,.rm,.ts", "处理的文件后缀")
 	RootCmd.PersistentFlags().StringVarP(&flags.IgnorePath, "ignore-path", "i", "云盘缓存文件", "不进行处理的目录")
 }

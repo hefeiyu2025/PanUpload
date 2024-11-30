@@ -10,6 +10,7 @@ var (
 	CachePath        string
 	Debug            bool
 	Delete           bool
+	DeleteAllSession bool
 	RemoveStr        string
 	RemoveReg        string
 	UploadExtensions string

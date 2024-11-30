@@ -71,6 +71,20 @@ func exitByError(err error) {
 
 func StartUpload(file string) {
 	initClient()
+	if flags.DeleteAllSession {
+		fmt.Println("delete all session")
+		resp, err := DeleteAllSession()
+		if err != nil {
+			fmt.Println(resp, err)
+		} else {
+			err := os.RemoveAll(flags.CachePath)
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println("delete all session success")
+
+		}
+	}
 	directoryResp, err := cloudreveClient.ListDirectory(flags.RemotePath)
 	exitByError(err)
 	// 默认为当前目录
