@@ -72,16 +72,17 @@ func exitByError(err error) {
 func StartUpload(file string) {
 	initClient()
 	if flags.DeleteAllSession {
-		fmt.Println("delete all session")
 		resp, err := DeleteAllSession()
 		if err != nil {
 			fmt.Println(resp, err)
 		} else {
-			err := os.RemoveAll(flags.CachePath)
+			fmt.Println("delete all session success")
+			err := os.RemoveAll(os.TempDir() + "/cloudreve-cache")
 			if err != nil {
 				fmt.Println(err)
+			} else {
+				fmt.Println("delete cloudreve-cache success", os.TempDir()+"/cloudreve-cache")
 			}
-			fmt.Println("delete all session success")
 
 		}
 	}
