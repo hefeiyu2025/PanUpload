@@ -3,6 +3,7 @@ package main
 import (
 	"PanUpload/cmd"
 	"fmt"
+	client "github.com/hefeiyu2025/pan-client"
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,8 +37,13 @@ func checkPid(pidFile string) bool {
 }
 
 func main() {
+
 	pidFile := getPidFile()
 
+	defer func() {
+		removePid(pidFile)
+		client.GracefulExist()
+	}()
 	// 检查PID文件是否存在
 	if checkPid(pidFile) {
 		fmt.Println("程序已在运行中...")
@@ -59,14 +65,6 @@ func main() {
 		os.Exit(1)
 	}()
 
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic end:", r)
-			removePid(pidFile)
-		}
-		os.Exit(1)
-	}()
 	cmd.Execute()
 
-	removePid(pidFile)
 }
