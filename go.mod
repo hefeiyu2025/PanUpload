@@ -4,8 +4,7 @@ go 1.23.0
 
 require (
 	github.com/caiguanhao/opencc v1.1.9
-	github.com/hefeiyu2025/pan-client v1.0.5
-	github.com/spf13/cobra v1.8.1
+	github.com/hefeiyu2025/pan-client v1.0.7
 	github.com/spf13/viper v1.19.0
 )
 
@@ -19,7 +18,6 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imroc/req/v3 v3.48.0 // indirect
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/liuzl/cedar-go v0.0.0-20170805034717-80a9c64b256d // indirect
 	github.com/liuzl/da v0.0.0-20180704015230-14771aad5b1d // indirect

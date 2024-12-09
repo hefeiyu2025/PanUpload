@@ -1,9 +1,14 @@
 driver:
     cloudreve:
-        url: https://pan.huang1111.cn
-        session: MTczMzMwMjA5M3xOd3dBTkVGTVZsVXpWelZVV1RkRFJWUkVRa3BJVVZNM1NsTkJTRVUxU1ZrM1QwSkpWbFJSVjBsVVNqSkVXakpMUzFsTVZ6TkhNMUU9fO2sUUWl2Z-SXN5GvmJOzs109Z7cTwkeA02uIEUUkaZV
+        chunk_size: 104857600
         refresh_time: 1733302097028
-        chunk_size: 1048576
+        session: MTczMzMwMjA5M3xOd3dBTkVGTVZsVXpWelZVV1RkRFJWUkVRa3BJVVZNM1NsTkJTRVUxU1ZrM1QwSkpWbFJSVjBsVVNqSkVXakpMUzFsTVZ6TkhNMUU9fO2sUUWl2Z-SXN5GvmJOzs109Z7cTwkeA02uIEUUkaZV
+        url: https://pan.huang1111.cn
+    quark:
+        pus: fdf89feb5dbef29454b84ca2256debf2AARhpdr0ONCtimUEhZno2l6IIgBD4HrVyGGS1i2BbwNJjWeXVkfbBwYNz0ZRr6lxKhhSLxtFBk+wDfESZ5phOuhw
+        puus: 1b168a7bd775f2f5f8e1db42044d9c23AARWvkP/31+FOgQBMcXvCQljMrcsT2trxiaNMJIAL0yvkvJiA6Uz6XZwN7KIASlbyH4Hvc5Nn0r6dQ6sNUdQbBS0nFJkEAMoV8ZUrdMf6tVUDnTPeiFeFATdhy+Pmgx+2FrcdzFDo9H1z9qRXSsB2jro91A6Haoyd/+yaU7FDHurTUU/6tjrQeF25zIrSo/j8cc/vTOu63BaKp2lG+Bkul75
+        refresh_time: 1733714176128
+        chunk_size: 104857600
 log:
     compress: false
     enable: true
@@ -12,6 +17,6 @@ log:
     max_backups: 30
     max_size: 50
 server:
-    cache_file: "cache.dat"
-    debug: false
-    download_tmp_path: "./tmp"
+    cache_file: cache.dat
+    debug: true
+    download_tmp_path: ./tmp

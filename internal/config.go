@@ -18,7 +18,8 @@ func GetProcessPath() string {
 	return filepath.Dir(process)
 }
 
-type RootConfig struct {
+type UploadConfig struct {
+	LocalPath       string   `mapstructure:"local_path" json:"local_path" yaml:"local_path"`
 	RemotePath      string   `mapstructure:"remote_path" json:"remote_path" yaml:"remote_path"`
 	SuccessDelete   bool     `mapstructure:"success_delete" json:"success_delete" yaml:"success_delete"`
 	RemoveStr       []string `mapstructure:"remove_str" json:"remove_str" yaml:"remove_str"`
@@ -27,17 +28,42 @@ type RootConfig struct {
 	IgnorePath      []string `mapstructure:"ignore_path" json:"ignore_path" yaml:"ignore_path"`
 }
 
+type MoveConfig struct {
+	FromClient string   `mapstructure:"from_client" json:"from_client" yaml:"from_client"`
+	ToClient   string   `mapstructure:"to_client" json:"to_client" yaml:"to_client"`
+	RemotePath string   `mapstructure:"remote_path" json:"remote_path" yaml:"remote_path"`
+	TmpPath    string   `mapstructure:"tmp_path" json:"tmp_path" yaml:"tmp_path"`
+	RemoveStr  []string `mapstructure:"remove_str" json:"remove_str" yaml:"remove_str"`
+	RemoveReg  string   `mapstructure:"remove_reg" json:"remove_reg" yaml:"remove_reg"`
+}
+
+type RootConfig struct {
+	Upload *UploadConfig `mapstructure:"upload" json:"upload" yaml:"upload"`
+	Move   *MoveConfig   `mapstructure:"move" json:"move" yaml:"move"`
+}
+
 var Config = RootConfig{
-	RemotePath:      "/",
-	SuccessDelete:   false,
-	RemoveStr:       []string{},
-	RemoveReg:       "",
-	UploadExtension: []string{},
-	IgnorePath:      []string{},
+	Upload: &UploadConfig{
+		LocalPath:       "./",
+		RemotePath:      "/",
+		SuccessDelete:   false,
+		RemoveStr:       []string{},
+		RemoveReg:       "",
+		UploadExtension: []string{},
+		IgnorePath:      []string{},
+	},
+	Move: &MoveConfig{
+		FromClient: "cloudreve",
+		ToClient:   "quark",
+		RemotePath: "/",
+		TmpPath:    "./tmpdata",
+		RemoveStr:  []string{},
+		RemoveReg:  "",
+	},
 }
 
 func InitConfig() {
-	configName := "pan-upload"
+	configName := "pan-work"
 	// 添加运行目录
 	v := viper.New()
 	v.AddConfigPath(GetProcessPath())
