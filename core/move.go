@@ -58,24 +58,7 @@ func StartMove() {
 					Resumable:  true,
 					SuccessDel: true,
 					RemoteTransfer: func(remotePath, remoteName string) (string, string) {
-						newFileName := remoteName
-						newRemotePath := remotePath
-						for _, removeStr := range moveConfig.RemoveStr {
-							newFileName = strings.ReplaceAll(newFileName, removeStr, "")
-							newRemotePath = strings.ReplaceAll(newRemotePath, removeStr, "")
-						}
-						// 使用正则表达式替换字符串
-						if moveConfig.RemoveReg != "" {
-							re := regexp.MustCompile(moveConfig.RemoveReg)
-							newRemotePath = re.ReplaceAllString(newRemotePath, "")
-						}
-
-						newFileName = strings.TrimSpace(newFileName)
-						newFileName = t2s.Dicts.Convert(newFileName)
-						newRemotePath = strings.TrimSpace(newRemotePath)
-						newRemotePath = t2s.Dicts.Convert(newRemotePath)
-
-						return newRemotePath, newFileName
+						return rename(moveConfig, remotePath, remoteName)
 					},
 				})
 				if err != nil {
@@ -86,30 +69,35 @@ func StartMove() {
 		}
 	}()
 	go func() {
-		downloadDir := &pan.PanObj{
-			Name: strings.TrimLeft(moveConfig.RemotePath, "/"),
-			Path: "/",
-			Type: "dir",
-		}
+		remotePath, _ := rename(moveConfig, strings.TrimLeft(moveConfig.RemotePath, "/"), "")
 		objs, err := quark.List(pan.ListReq{
 			Reload: true,
-			Dir:    downloadDir,
+			Dir: &pan.PanObj{
+				Name: remotePath,
+				Path: "/",
+				Type: "dir",
+			},
 		})
-		if err != nil {
-			fmt.Println(err)
-			close(doneChan)
-		}
 		ignoreFiles := make([]string, 0)
 		ignorePaths := make([]string, 0)
-		for _, obj := range objs {
-			if obj.Type == "dir" {
-				ignorePaths = append(ignorePaths, obj.Name)
-			} else {
-				ignoreFiles = append(ignoreFiles, obj.Name)
+		if err == nil {
+			for _, obj := range objs {
+				if obj.Type == "dir" {
+					ignorePaths = append(ignorePaths, obj.Name)
+				} else {
+					ignoreFiles = append(ignoreFiles, obj.Name)
+				}
 			}
+		} else {
+			fmt.Println(err)
 		}
+
 		err = cloudreve.DownloadPath(pan.DownloadPathReq{
-			RemotePath:  downloadDir,
+			RemotePath: &pan.PanObj{
+				Name: strings.TrimLeft(moveConfig.RemotePath, "/"),
+				Path: "/",
+				Type: "dir",
+			},
 			SkipFileErr: true,
 			LocalPath:   filepath.Join(moveConfig.TmpPath, moveConfig.RemotePath),
 			Concurrency: moveConfig.DownloadThread,
@@ -134,4 +122,25 @@ func StartMove() {
 		return
 	}
 
+}
+
+func rename(moveConfig *internal.MoveConfig, remotePath string, remoteName string) (string, string) {
+	newFileName := remoteName
+	newRemotePath := remotePath
+	for _, removeStr := range moveConfig.RemoveStr {
+		newFileName = strings.ReplaceAll(newFileName, removeStr, "")
+		newRemotePath = strings.ReplaceAll(newRemotePath, removeStr, "")
+	}
+	// 使用正则表达式替换字符串
+	if moveConfig.RemoveReg != "" {
+		re := regexp.MustCompile(moveConfig.RemoveReg)
+		newRemotePath = re.ReplaceAllString(newRemotePath, "")
+	}
+
+	newFileName = strings.TrimSpace(newFileName)
+	newFileName = t2s.Dicts.Convert(newFileName)
+	newRemotePath = strings.TrimSpace(newRemotePath)
+	newRemotePath = t2s.Dicts.Convert(newRemotePath)
+
+	return newRemotePath, newFileName
 }
