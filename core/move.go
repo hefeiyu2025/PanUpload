@@ -86,17 +86,37 @@ func StartMove() {
 		}
 	}()
 	go func() {
-		err := cloudreve.DownloadPath(pan.DownloadPathReq{
-			RemotePath: &pan.PanObj{
-				Name: strings.TrimLeft(moveConfig.RemotePath, "/"),
-				Path: "/",
-				Type: "dir",
-			},
+		downloadDir := &pan.PanObj{
+			Name: strings.TrimLeft(moveConfig.RemotePath, "/"),
+			Path: "/",
+			Type: "dir",
+		}
+		objs, err := quark.List(pan.ListReq{
+			Reload: true,
+			Dir:    downloadDir,
+		})
+		if err != nil {
+			fmt.Println(err)
+			close(doneChan)
+		}
+		ignoreFiles := make([]string, 0)
+		ignorePaths := make([]string, 0)
+		for _, obj := range objs {
+			if obj.Type == "dir" {
+				ignorePaths = append(ignorePaths, obj.Name)
+			} else {
+				ignoreFiles = append(ignoreFiles, obj.Name)
+			}
+		}
+		err = cloudreve.DownloadPath(pan.DownloadPathReq{
+			RemotePath:  downloadDir,
 			SkipFileErr: true,
 			LocalPath:   filepath.Join(moveConfig.TmpPath, moveConfig.RemotePath),
-			Concurrency: 2,
-			ChunkSize:   50 * 1024 * 1024, // 50M
-			OverCover:   true,
+			Concurrency: moveConfig.DownloadThread,
+			ChunkSize:   moveConfig.DownloadChunkSize,
+			OverCover:   false,
+			IgnorePaths: ignorePaths,
+			IgnoreFiles: ignoreFiles,
 			DownloadCallback: func(localPath, localFile string) {
 				fileChan <- localFile
 			},

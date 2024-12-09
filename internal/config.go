@@ -29,12 +29,14 @@ type UploadConfig struct {
 }
 
 type MoveConfig struct {
-	FromClient string   `mapstructure:"from_client" json:"from_client" yaml:"from_client"`
-	ToClient   string   `mapstructure:"to_client" json:"to_client" yaml:"to_client"`
-	RemotePath string   `mapstructure:"remote_path" json:"remote_path" yaml:"remote_path"`
-	TmpPath    string   `mapstructure:"tmp_path" json:"tmp_path" yaml:"tmp_path"`
-	RemoveStr  []string `mapstructure:"remove_str" json:"remove_str" yaml:"remove_str"`
-	RemoveReg  string   `mapstructure:"remove_reg" json:"remove_reg" yaml:"remove_reg"`
+	FromClient        string   `mapstructure:"from_client" json:"from_client" yaml:"from_client"`
+	ToClient          string   `mapstructure:"to_client" json:"to_client" yaml:"to_client"`
+	RemotePath        string   `mapstructure:"remote_path" json:"remote_path" yaml:"remote_path"`
+	TmpPath           string   `mapstructure:"tmp_path" json:"tmp_path" yaml:"tmp_path"`
+	RemoveStr         []string `mapstructure:"remove_str" json:"remove_str" yaml:"remove_str"`
+	RemoveReg         string   `mapstructure:"remove_reg" json:"remove_reg" yaml:"remove_reg"`
+	DownloadThread    int      `mapstructure:"download_thread" json:"download_thread" yaml:"download_thread"`
+	DownloadChunkSize int64    `mapstructure:"download_chunk_size" json:"download_chunk_size" yaml:"download_chunk_size"`
 }
 
 type RootConfig struct {
@@ -53,12 +55,14 @@ var Config = RootConfig{
 		IgnorePath:      []string{},
 	},
 	Move: &MoveConfig{
-		FromClient: "cloudreve",
-		ToClient:   "quark",
-		RemotePath: "/",
-		TmpPath:    "./tmpdata",
-		RemoveStr:  []string{},
-		RemoveReg:  "",
+		FromClient:        "cloudreve",
+		ToClient:          "quark",
+		RemotePath:        "/",
+		TmpPath:           "./tmpdata",
+		RemoveStr:         []string{},
+		RemoveReg:         "",
+		DownloadThread:    1,
+		DownloadChunkSize: 100 * 1024 * 1024,
 	},
 }
 
