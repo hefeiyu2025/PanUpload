@@ -11,7 +11,7 @@ import (
 
 func uploadInit() pan.Driver {
 	internal.InitConfig()
-	c, err := client.GetClient(pan.Cloudreve)
+	c, err := client.GetClient(pan.DriverType(internal.Config.Upload.UploadClient))
 	if err != nil {
 		panic(err)
 	}
@@ -19,36 +19,35 @@ func uploadInit() pan.Driver {
 }
 
 func StartUpload() {
-	cloudreveDriver := uploadInit()
+	driver := uploadInit()
 	uploadConfig := internal.Config.Upload
-	err := cloudreveDriver.UploadPath(pan.UploadPathReq{
-		LocalPath:   uploadConfig.LocalPath,
-		RemotePath:  uploadConfig.RemotePath,
-		Resumable:   true,
-		SkipFileErr: true,
-		SuccessDel:  uploadConfig.SuccessDelete,
-		IgnorePaths: uploadConfig.IgnorePath,
-		Extensions:  uploadConfig.UploadExtension,
-		RemoteTransfer: func(remotePath, remoteName string) (string, string) {
-			newFileName := remoteName
-			newRemotePath := remotePath
-			for _, removeStr := range uploadConfig.RemoveStr {
-				newFileName = strings.ReplaceAll(newFileName, removeStr, "")
-				newRemotePath = strings.ReplaceAll(newRemotePath, removeStr, "")
-			}
-			// 使用正则表达式替换字符串
-			if uploadConfig.RemoveReg != "" {
-				re := regexp.MustCompile(uploadConfig.RemoveReg)
-				newRemotePath = re.ReplaceAllString(newRemotePath, "")
-			}
+	remoteTransfer := func(remote string) string {
+		newRemote := remote
+		for _, removeStr := range uploadConfig.RemoveStr {
+			newRemote = strings.ReplaceAll(newRemote, removeStr, "")
+		}
+		// 使用正则表达式替换字符串
+		if uploadConfig.RemoveReg != "" {
+			re := regexp.MustCompile(uploadConfig.RemoveReg)
+			newRemote = re.ReplaceAllString(newRemote, "")
+		}
 
-			newFileName = strings.TrimSpace(newFileName)
-			newFileName = t2s.Dicts.Convert(newFileName)
-			newRemotePath = strings.TrimSpace(newRemotePath)
-			newRemotePath = t2s.Dicts.Convert(newRemotePath)
+		newRemote = strings.TrimSpace(newRemote)
+		newRemote = t2s.Dicts.Convert(newRemote)
 
-			return newRemotePath, newFileName
-		},
+		return newRemote
+	}
+	err := driver.UploadPath(pan.UploadPathReq{
+		LocalPath:          uploadConfig.LocalPath,
+		RemotePath:         uploadConfig.RemotePath,
+		Resumable:          true,
+		SkipFileErr:        true,
+		OnlyFast:           uploadConfig.OnlyFast,
+		SuccessDel:         uploadConfig.SuccessDelete,
+		IgnorePaths:        uploadConfig.IgnorePath,
+		Extensions:         uploadConfig.UploadExtension,
+		RemotePathTransfer: remoteTransfer,
+		RemoteNameTransfer: remoteTransfer,
 	})
 
 	if err != nil {

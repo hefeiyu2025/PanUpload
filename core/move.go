@@ -57,8 +57,11 @@ func StartMove() {
 					RemotePath: relativePath,
 					Resumable:  true,
 					SuccessDel: true,
-					RemoteTransfer: func(remotePath, remoteName string) (string, string) {
-						return rename(moveConfig, remotePath, remoteName)
+					RemotePathTransfer: func(remote string) string {
+						return rename(moveConfig, remote)
+					},
+					RemoteNameTransfer: func(remote string) string {
+						return rename(moveConfig, remote)
 					},
 				})
 				if err != nil {
@@ -69,7 +72,7 @@ func StartMove() {
 		}
 	}()
 	go func() {
-		remotePath, _ := rename(moveConfig, strings.TrimLeft(moveConfig.RemotePath, "/"), "")
+		remotePath := rename(moveConfig, strings.TrimLeft(moveConfig.RemotePath, "/"))
 		objs, err := quark.List(pan.ListReq{
 			Reload: true,
 			Dir: &pan.PanObj{
@@ -105,6 +108,9 @@ func StartMove() {
 			OverCover:   false,
 			IgnorePaths: ignorePaths,
 			IgnoreFiles: ignoreFiles,
+			RemoteNameTransfer: func(remote string) string {
+				return rename(moveConfig, remote)
+			},
 			DownloadCallback: func(localPath, localFile string) {
 				fileChan <- localFile
 			},
@@ -124,23 +130,19 @@ func StartMove() {
 
 }
 
-func rename(moveConfig *internal.MoveConfig, remotePath string, remoteName string) (string, string) {
-	newFileName := remoteName
-	newRemotePath := remotePath
+func rename(moveConfig *internal.MoveConfig, remote string) string {
+	newRemote := remote
 	for _, removeStr := range moveConfig.RemoveStr {
-		newFileName = strings.ReplaceAll(newFileName, removeStr, "")
-		newRemotePath = strings.ReplaceAll(newRemotePath, removeStr, "")
+		newRemote = strings.ReplaceAll(newRemote, removeStr, "")
 	}
 	// 使用正则表达式替换字符串
 	if moveConfig.RemoveReg != "" {
 		re := regexp.MustCompile(moveConfig.RemoveReg)
-		newRemotePath = re.ReplaceAllString(newRemotePath, "")
+		newRemote = re.ReplaceAllString(newRemote, "")
 	}
 
-	newFileName = strings.TrimSpace(newFileName)
-	newFileName = t2s.Dicts.Convert(newFileName)
-	newRemotePath = strings.TrimSpace(newRemotePath)
-	newRemotePath = t2s.Dicts.Convert(newRemotePath)
+	newRemote = strings.TrimSpace(newRemote)
+	newRemote = t2s.Dicts.Convert(newRemote)
 
-	return newRemotePath, newFileName
+	return newRemote
 }

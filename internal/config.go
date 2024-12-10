@@ -19,6 +19,8 @@ func GetProcessPath() string {
 }
 
 type UploadConfig struct {
+	UploadClient    string   `mapstructure:"upload_client" json:"upload_client" yaml:"upload_client"`
+	OnlyFast        bool     `mapstructure:"only_fast" json:"only_fast" yaml:"only_fast"`
 	LocalPath       string   `mapstructure:"local_path" json:"local_path" yaml:"local_path"`
 	RemotePath      string   `mapstructure:"remote_path" json:"remote_path" yaml:"remote_path"`
 	SuccessDelete   bool     `mapstructure:"success_delete" json:"success_delete" yaml:"success_delete"`
@@ -46,8 +48,10 @@ type RootConfig struct {
 
 var Config = RootConfig{
 	Upload: &UploadConfig{
+		UploadClient:    "cloudreve",
 		LocalPath:       "./",
 		RemotePath:      "/",
+		OnlyFast:        false,
 		SuccessDelete:   false,
 		RemoveStr:       []string{},
 		RemoveReg:       "",
