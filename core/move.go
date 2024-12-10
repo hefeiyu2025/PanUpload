@@ -6,6 +6,7 @@ import (
 	"github.com/caiguanhao/opencc/configs/t2s"
 	client "github.com/hefeiyu2025/pan-client"
 	"github.com/hefeiyu2025/pan-client/pan"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -67,6 +68,14 @@ func StartMove() {
 				if err != nil {
 					fmt.Println(err)
 					continue
+				}
+				empty, e := internal.IsEmptyDir(absolutePath)
+				if e != nil {
+					fmt.Println(e)
+					continue
+				}
+				if empty {
+					_ = os.Remove(absolutePath)
 				}
 			}
 		}

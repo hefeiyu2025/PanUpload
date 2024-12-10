@@ -4,7 +4,6 @@ upload:
     ignore_path:
         - 云盘缓存文件
     remote_path: /
-    remove_reg: ""
     remove_str:
         - TVBOXNOW
         - ViuTV
