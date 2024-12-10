@@ -80,4 +80,7 @@ fabric.properties
 .idea
 go.sum
 pupload_*
+tmp
+tmpdata
+logs
 
