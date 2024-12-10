@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/caiguanhao/opencc v1.1.9
-	github.com/hefeiyu2025/pan-client v1.1.4
+	github.com/hefeiyu2025/pan-client v1.1.5
 	github.com/spf13/viper v1.19.0
 )
 
