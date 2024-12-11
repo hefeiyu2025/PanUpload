@@ -14,22 +14,22 @@ import (
 
 func moveInit() (pan.Driver, pan.Driver) {
 	internal.InitConfig()
-	c, err := client.GetClient(pan.Cloudreve)
+	f, err := client.GetClient(pan.DriverType(internal.Config.Move.FromClient))
 	if err != nil {
 		panic(err)
 	}
-	q, err := client.GetClient(pan.Quark)
+	t, err := client.GetClient(pan.DriverType(internal.Config.Move.ToClient))
 	if err != nil {
 		panic(err)
 	}
-	return c, q
+	return f, t
 }
 
 func StartMove() {
 	fileChan := make(chan string)
 	doneChan := make(chan struct{})
 	moveConfig := internal.Config.Move
-	cloudreve, quark := moveInit()
+	from, to := moveInit()
 	go func() {
 		for {
 			select {
@@ -53,7 +53,7 @@ func StartMove() {
 				if relativePath == "." {
 					relativePath = "/"
 				}
-				err = quark.UploadFile(pan.UploadFileReq{
+				err = to.UploadFile(pan.UploadFileReq{
 					LocalFile:  file,
 					RemotePath: relativePath,
 					Resumable:  true,
@@ -82,7 +82,7 @@ func StartMove() {
 	}()
 	go func() {
 		remotePath := rename(moveConfig, strings.TrimLeft(moveConfig.RemotePath, "/"))
-		objs, err := quark.List(pan.ListReq{
+		objs, err := to.List(pan.ListReq{
 			Reload: true,
 			Dir: &pan.PanObj{
 				Name: remotePath,
@@ -104,7 +104,7 @@ func StartMove() {
 			fmt.Println(err)
 		}
 
-		err = cloudreve.DownloadPath(pan.DownloadPathReq{
+		err = from.DownloadPath(pan.DownloadPathReq{
 			RemotePath: &pan.PanObj{
 				Name: strings.TrimLeft(moveConfig.RemotePath, "/"),
 				Path: "/",
