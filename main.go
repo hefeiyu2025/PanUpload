@@ -5,8 +5,6 @@ import (
 	"fmt"
 	client "github.com/hefeiyu2025/pan-client"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 // getPidFile 获取或创建PID文件
@@ -51,16 +49,6 @@ func main() {
 		fmt.Printf("写入PID失败: %v\n", err)
 		os.Exit(1)
 	}
-
-	// 设置信号处理器，以便在程序退出时移除PID文件
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		removePid(pidFile)
-		client.GracefulExist()
-		os.Exit(1)
-	}()
 
 	//cmd.Execute()
 	defer func() {
