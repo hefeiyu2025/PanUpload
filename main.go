@@ -58,6 +58,7 @@ func main() {
 	go func() {
 		<-c
 		removePid(pidFile)
+		client.GracefulExist()
 		os.Exit(1)
 	}()
 
