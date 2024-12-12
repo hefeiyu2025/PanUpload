@@ -1,26 +1,45 @@
+download:
+    download_client: cloudreve
+    local_path: ./download_data
+    remote_path:
+        - /
+    remove_str:
+        - TVBOXNOW
+        - ViuTV
+    remove_reg: ""
+    download_thread: 1
+    download_chunk_size: 104857600
+move:
+    from_client: cloudreve
+    to_client: quark
+    remote_path:
+        - /
+    tmp_path: ./tmpdata
+    remove_str:
+        - TVBOXNOW
+        - ViuTV
+    remove_reg: ""
+    download_thread: 1
+    download_chunk_size: 104857600
 upload:
-    upload_client: quark
-    only_fast: true
+    upload_client: cloudreve
+    only_fast: false
+    local_path:
+        - ./
+    remote_path: /
+    success_delete: false
+    remove_str:
+        - TVBOXNOW
+        - ViuTV
+    remove_reg: ""
+    upload_extension:
+        - .mp4
+        - .avi
+        - .mkv
+        - .flv
+        - .mov
+        - .rmvb
+        - .rm
+        - .ts
     ignore_path:
         - 云盘缓存文件
-    remote_path: /
-    remove_str:
-        - TVBOXNOW
-        - ViuTV
-    success_delete: false
-    #upload_extension:
-    #    - .mp4
-    #    - .avi
-    #    - .mkv
-    #    - .flv
-    #    - .mov
-    #    - .rmvb
-    #    - .rm
-    #    - .ts
-move:
-    download_chunk_size: 209715200
-    download_thread: 4
-    remote_path: /test
-    remove_str:
-        - TVBOXNOW
-        - ViuTV
