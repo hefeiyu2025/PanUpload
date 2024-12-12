@@ -37,21 +37,24 @@ func StartUpload() {
 
 		return newRemote
 	}
-	err := driver.UploadPath(pan.UploadPathReq{
-		LocalPath:          uploadConfig.LocalPath,
-		RemotePath:         uploadConfig.RemotePath,
-		Resumable:          true,
-		SkipFileErr:        true,
-		OnlyFast:           uploadConfig.OnlyFast,
-		SuccessDel:         uploadConfig.SuccessDelete,
-		IgnorePaths:        uploadConfig.IgnorePath,
-		Extensions:         uploadConfig.UploadExtension,
-		RemotePathTransfer: remoteTransfer,
-		RemoteNameTransfer: remoteTransfer,
-	})
+	paths := uploadConfig.LocalPath
+	for _, path := range paths {
+		err := driver.UploadPath(pan.UploadPathReq{
+			LocalPath:          path,
+			RemotePath:         uploadConfig.RemotePath,
+			Resumable:          true,
+			SkipFileErr:        true,
+			OnlyFast:           uploadConfig.OnlyFast,
+			SuccessDel:         uploadConfig.SuccessDelete,
+			IgnorePaths:        uploadConfig.IgnorePath,
+			Extensions:         uploadConfig.UploadExtension,
+			RemotePathTransfer: remoteTransfer,
+			RemoteNameTransfer: remoteTransfer,
+		})
 
-	if err != nil {
-		panic(err)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 }
