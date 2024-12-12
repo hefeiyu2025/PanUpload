@@ -81,55 +81,57 @@ func StartMove() {
 		}
 	}()
 	go func() {
-		remotePath := rename(moveConfig, strings.TrimLeft(moveConfig.RemotePath, "/"))
-		objs, err := to.List(pan.ListReq{
-			Reload: true,
-			Dir: &pan.PanObj{
-				Name: remotePath,
-				Path: "/",
-				Type: "dir",
-			},
-		})
-		ignoreFiles := make([]string, 0)
-		ignorePaths := make([]string, 0)
-		if err == nil {
-			for _, obj := range objs {
-				if obj.Type == "dir" {
-					ignorePaths = append(ignorePaths, obj.Name)
-				} else {
-					ignoreFiles = append(ignoreFiles, obj.Name)
+		remotePaths := moveConfig.RemotePath
+		for _, rPath := range remotePaths {
+			remotePath := rename(moveConfig, strings.TrimLeft(rPath, "/"))
+			objs, err := to.List(pan.ListReq{
+				Reload: true,
+				Dir: &pan.PanObj{
+					Name: remotePath,
+					Path: "/",
+					Type: "dir",
+				},
+			})
+			ignoreFiles := make([]string, 0)
+			ignorePaths := make([]string, 0)
+			if err == nil {
+				for _, obj := range objs {
+					if obj.Type == "dir" {
+						ignorePaths = append(ignorePaths, obj.Name)
+					} else {
+						ignoreFiles = append(ignoreFiles, obj.Name)
+					}
 				}
+			} else {
+				fmt.Println(err)
 			}
-		} else {
-			fmt.Println(err)
-		}
 
-		err = from.DownloadPath(pan.DownloadPathReq{
-			RemotePath: &pan.PanObj{
-				Name: strings.TrimLeft(moveConfig.RemotePath, "/"),
-				Path: "/",
-				Type: "dir",
-			},
-			SkipFileErr: true,
-			LocalPath:   filepath.Join(moveConfig.TmpPath, moveConfig.RemotePath),
-			Concurrency: moveConfig.DownloadThread,
-			ChunkSize:   moveConfig.DownloadChunkSize,
-			OverCover:   false,
-			IgnorePaths: ignorePaths,
-			IgnoreFiles: ignoreFiles,
-			RemoteNameTransfer: func(remote string) string {
-				return rename(moveConfig, remote)
-			},
-			DownloadCallback: func(localPath, localFile string) {
-				fileChan <- localFile
-			},
-		})
-		if err != nil {
-			fmt.Println(err)
-			close(doneChan)
-		} else {
-			close(fileChan)
+			err = from.DownloadPath(pan.DownloadPathReq{
+				RemotePath: &pan.PanObj{
+					Name: strings.TrimLeft(rPath, "/"),
+					Path: "/",
+					Type: "dir",
+				},
+				SkipFileErr: true,
+				LocalPath:   filepath.Join(moveConfig.TmpPath, rPath),
+				Concurrency: moveConfig.DownloadThread,
+				ChunkSize:   moveConfig.DownloadChunkSize,
+				OverCover:   false,
+				IgnorePaths: ignorePaths,
+				IgnoreFiles: ignoreFiles,
+				RemoteNameTransfer: func(remote string) string {
+					return rename(moveConfig, remote)
+				},
+				DownloadCallback: func(localPath, localFile string) {
+					fileChan <- localFile
+				},
+			})
+			if err != nil {
+				fmt.Println(err)
+				close(doneChan)
+			}
 		}
+		close(fileChan)
 	}()
 
 	select {
