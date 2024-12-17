@@ -18,6 +18,16 @@ func GetProcessPath() string {
 	return filepath.Dir(process)
 }
 
+type DownloadConfig struct {
+	DownloadClient    string   `mapstructure:"download_client" json:"download_client" yaml:"download_client"`
+	LocalPath         string   `mapstructure:"local_path" json:"local_path" yaml:"local_path"`
+	RemotePath        []string `mapstructure:"remote_path" json:"remote_path" yaml:"remote_path"`
+	RemoveStr         []string `mapstructure:"remove_str" json:"remove_str" yaml:"remove_str"`
+	RemoveReg         string   `mapstructure:"remove_reg" json:"remove_reg" yaml:"remove_reg"`
+	DownloadThread    int      `mapstructure:"download_thread" json:"download_thread" yaml:"download_thread"`
+	DownloadChunkSize int64    `mapstructure:"download_chunk_size" json:"download_chunk_size" yaml:"download_chunk_size"`
+}
+
 type UploadConfig struct {
 	UploadClient    string   `mapstructure:"upload_client" json:"upload_client" yaml:"upload_client"`
 	OnlyFast        bool     `mapstructure:"only_fast" json:"only_fast" yaml:"only_fast"`
@@ -42,8 +52,9 @@ type MoveConfig struct {
 }
 
 type RootConfig struct {
-	Upload *UploadConfig `mapstructure:"upload" json:"upload" yaml:"upload"`
-	Move   *MoveConfig   `mapstructure:"move" json:"move" yaml:"move"`
+	Upload   *UploadConfig   `mapstructure:"upload" json:"upload" yaml:"upload"`
+	Download *DownloadConfig `mapstructure:"download" json:"download" yaml:"download"`
+	Move     *MoveConfig     `mapstructure:"move" json:"move" yaml:"move"`
 }
 
 var Config = RootConfig{
@@ -57,6 +68,15 @@ var Config = RootConfig{
 		RemoveReg:       "",
 		UploadExtension: []string{},
 		IgnorePath:      []string{},
+	},
+	Download: &DownloadConfig{
+		DownloadClient:    "cloudreve",
+		LocalPath:         "./download_data",
+		RemotePath:        []string{"/"},
+		RemoveStr:         []string{},
+		RemoveReg:         "",
+		DownloadThread:    1,
+		DownloadChunkSize: 100 * 1024 * 1024,
 	},
 	Move: &MoveConfig{
 		FromClient:        "cloudreve",
