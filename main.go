@@ -55,5 +55,5 @@ func main() {
 		removePid(pidFile)
 		client.GracefulExist()
 	}()
-	core.StartUpload()
+	core.StartMove()
 }

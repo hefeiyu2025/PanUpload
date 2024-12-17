@@ -10,7 +10,7 @@ download:
     download_thread: 1
     download_chunk_size: 104857600
 move:
-    from_client: cloudreve
+    from_client: thunder_browser
     to_client: quark
     remote_path:
         - /

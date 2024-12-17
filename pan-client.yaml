@@ -1,14 +1,25 @@
 driver:
     cloudreve:
+        chunk_size: 104857600
+        refresh_time: 1733905923578
+        session: MTczMzkwNTkyM3xOd3dBTkVGTVZsVXpWelZVV1RkRFJWUkVRa3BJVVZNM1NsTkJTRVUxU1ZrM1QwSkpWbFJSVjBsVVNqSkVXakpMUzFsTVZ6TkhNMUU9fD71ecFuPXUHnU2TO7hp0qVL6gERn74tCgg2QGVNemki
         url: https://pan.huang1111.cn
-        session: MTczMzk5Mzg3NXxOd3dBTkVGTVZsVXpWelZVV1RkRFJWUkVRa3BJVVZNM1NsTkJTRVUxU1ZrM1QwSkpWbFJSVjBsVVNqSkVXakpMUzFsTVZ6TkhNMUU9fNi_R9hN5_qmHDrzJCk-wtfKzPipGzE_FByaWTl1uFAf
-        refresh_time: 1733993875954
-        chunk_size: 104857600
     quark:
-        pus: 007c9947a89f3ac96b70ad2de08591acAAR8obvRgs/f0y/pADFEfFRVpqsmihZKBHmlfNtNVabijc8d9f7bdZBZBiqwNtfvJBVakjr7I5LVBFGuzq8VeJFI
-        puus: 5c445249d41eec39da1c2e792d51736fAARaYlZ+SZhCp1VQIm+uuZkvZp69CCVpTu3gLnEbFmW5gsZ7EpF481AElGdCvndFxEl2z0G8qe7ImtXdaAcJ0Ayw061KhehUFULOGwAh0qVJ1ID5QxnsKUTXHcg4S35LiJvQjI/dUHtzqpbbEm+wB3tEcUMdm+jtmyXXv+slw0QZlPGsAbbXygv8fLbyDrE5/QTolF8Cj5U4gIwoHO06F9Rm
-        refresh_time: 1733993876403
         chunk_size: 104857600
+        pus: fdf89feb5dbef29454b84ca2256debf2AARhpdr0ONCtimUEhZno2l6IIgBD4HrVyGGS1i2BbwNJjWeXVkfbBwYNz0ZRr6lxKhhSLxtFBk+wDfESZ5phOuhw
+        puus: 1b168a7bd775f2f5f8e1db42044d9c23AARWvkP/31+FOgQBMcXvCQljMrcsT2trxiaNMJIAL0yvkvJiA6Uz6XZwN7KIASlbyH4Hvc5Nn0r6dQ6sNUdQbBS0nFJkEAMoV8ZUrdMf6tVUDnTPeiFeFATdhy+Pmgx+2FrcdzFDo9H1z9qRXSsB2jro91A6Haoyd/+yaU7FDHurTUU/6tjrQeF25zIrSo/j8cc/vTOu63BaKp2lG+Bkul75
+        refresh_time: 1733714176128
+    thunder_browser:
+        username: "+8615217198132"
+        password: 159357qQ
+        refresh_token: a1.vMrTzG20-WdhMM4EZOhiMztIxMKkWZ53A7U0p13I10qQJGMeVdW6fOl7LvXzBuCDW9UIbZuY805rhYBUHC1NJPyIvfCzpmxdck1kvBijySXdAg
+        captcha_token: ck0.HjC1is_cciDztxvIY-N2XSjUHKFB0_Aum1ORhXCmvAD6DW63UvL6WdjySjvFUd5WwtUIER3mT7NNuyjGRNIhAItxB_pX5B4RkEKGvNxMLmOjxzJIR9UFxkanuCMDEvbn6nFTDmD63iCRxkwCffqw4aZnCFlwEpETKUboNBcpNvs5BIN5W7Gp4jApcyvZaBM61plQCA7iD76JwaM74Xg33NP4diQHCdyxdTYBLhiJ_QsT3gjeHCGQ3J3SNjd8WR9DqZ0ytscvNPXncGPgMJivP5UQgCGGcToQzhPQMfxTlixtw1NLFqIn2_9L4-JQDaIlyAfTng9s824BBvmQxMHBZQAJ2uL7Xn8yM1VO32qcmjQ.ClwI76yTnr0yEhBaVUJ6RDlKX1hQWGZuN2Y3GgsxLjEwLjAuMjYzMyISY29tLnh1bmxlaS5icm93c2VyKiA5MGM0NDllZmJmNWU4NmRkMzMzN2Q3ODY1OTZmOTgyNxKAATA8Jx9jtv_V68XDO2yxmKZupvC6T3nUbs53_nmM5g0gp0WBwYbtbfH_9WWn6A9jOeaEiXJ-RpHB3-IXMW-5QkAOjrSDoGhgPzBO-SeffNPda8KCBbM4tncGk5tGtwHLkK5y5-0RHv4bzhIkc_p5LKMKhB-6LwsT8OjGX971EHzq
+        device_id: 90c449efbf5e86dd3337d786596f9827
+        expires_in: 7200
+        token_type: Bearer
+        access_token: eyJhbGciOiJSUzI1NiIsImtpZCI6IjZjMzE3Y2JmLWEzYjEtNDY3Ni1hOWE2LWQxMmViOGE5Nzg5NSJ9.eyJpc3MiOiJodHRwczovL3hsdXNlci1zc2wueHVubGVpLmNvbSIsInN1YiI6IjExMTM2NTk1NjYiLCJhdWQiOiJaVUJ6RDlKX1hQWGZuN2Y3IiwiZXhwIjoxNzM0NDI5OTM0LCJpYXQiOjE3MzQ0MjI3MzQsImF0X2hhc2giOiJyLnNXbEFtcnhORWUtbFIzcEZwOG5ubFEiLCJzY29wZSI6Im9mZmxpbmUgdXNlciB2ZXJpZmllZCBwYW4gc3luYyBwcm9maWxlIG9zcyBhdXRoIGJvb2tzLyovY3JlYXRlIGJvb2tzLyovZ2V0IiwicHJvamVjdF9pZCI6IjJydms0ZTNna2RubDd1MWtsMGsiLCJ1c2VyX2dyb3VwIjoidmlwXzFfMV81IiwibWV0YSI6eyJhIjoieE5IWldVU2l5VlpxL1NCSmI5Mnp3NFB6Tk84Q3pYMUpEUEFTOHJSTkhVND0ifX0.WcdqH1swB4i-bIFALuMAdgq2XVLEc4cHEothfKmNFpjHWOlLnxuMScNTD9PsPudZbH1_9J9iS_RT88w3RUmxiy3RTGklDRtuMbZ2GssznZ23ytr_QcO8xxeEMrHkc_mOflyxVIV1skp9soF02lke4PZnwvyrZVDH1ep0eAoGa8Xbbe49LrIIsLh0JmYaElngDlG8Y9VTg6BA3SEdhibJN0uu9VvbqpwIJ_8o_0mh6Yhmr2gBzxyrlaqHumQ8pxe0Zq4SAEVwEPQP-Y4E1Kxq62TEyv-MG-8_0N-krXDWJenRDk0S7dH7WYU7_s5wh-w4i3QW4JmCiszc0JoR7PwfKw
+        sub: "1113659566"
+        user_id: "1113659566"
 log:
     compress: false
     enable: true
